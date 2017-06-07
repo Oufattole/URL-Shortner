@@ -13,3 +13,11 @@ Shorten URLs
         
 4) Every time the user uses the short URL they are redirected to the real one   
         This will require pulling the URL they put in for processing which will match it with the full URL and then redirect them.
+
+
+### Formatting
+Example shortened address:  
+        medgar.interns.kit.cm/andix
+
+Format for storage of websites:  
+        google.com/isearchedathing
