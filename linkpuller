@@ -1,0 +1,28 @@
+#Pulls the link from the url, to be processed later
+
+use Mojolicious::Lite;
+
+# [website]/?link=[YOUR LINK HERE]
+
+get '/' => sub {
+  my $c    = shift;
+  $c->stash(stuff => $c->param("link"));
+  $c->render(template => 'index');
+};
+
+app->start;
+__DATA__
+
+@@ index.html.ep
+% layout 'default';
+% title 'TESTING';
+<h1>This page is currently under construction</h1>
+You typed in the address
+<%= $stuff %>.
+
+@@ layouts/default.html.ep
+<!DOCTYPE html>
+<html>
+  <head><title><%= title %></title></head>
+  <body><%= content %></body>
+</html>
