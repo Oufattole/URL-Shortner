@@ -1,0 +1,25 @@
+use Mojolicious::Lite;
+#Automatically redirect the user to website, currently google.com
+get '/' => sub{
+	my $c = shift;
+	$c->stash(website => 'google.com');
+	$c->render(template => 'index');
+};
+
+app->start
+
+__DATA__
+
+@@ index.html.ep
+% layout 'default';
+% title 'Loading...';
+<h1> If you aren't redirected you can click the link below </h1>
+<p><a href="<%=$website%>">Redirect</a></p>
+
+@@ layouts/default.html.ep
+<!DOCTYPE html>
+<html>
+  #the url in this next part needs to have the http, but depending on variable storage this may already be there
+	<head> <title> <%= title %> </title> <meta http-equiv="refresh" content="0; url=http://<%= $website%>" /> </head>
+	<body><%= content %></body>
+</html>
