@@ -2,7 +2,7 @@
 
 use Mojolicious::Lite;
 
-# [website]/?link=[YOUR LINK HERE]
+# [website]?link=[YOUR LINK HERE]
 
 get '/' => sub {
   my $c    = shift;
