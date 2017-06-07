@@ -1,0 +1,3 @@
+<input type="text" name = "url_to_shorten" value= "" placeholder="Past the link to shorten">
+<input type="text" name = "url_to_shorten" value= "" placeholder="Past the link to shorten">
+<input type="submit" name="shorten" value="Shorten Link" />
