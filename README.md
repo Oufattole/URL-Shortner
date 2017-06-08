@@ -21,3 +21,8 @@ Example shortened address:
 
 Format for storage of websites:  
         google.com/isearchedathing
+
+TODO THINGS:
+Within the redirect code we shouldn't use the html meta redirect but instead a mojo redirect along with a 3xx code $c->res->code  
+For storage of links we could use a text document with Mojo::File, a database with postgres, or a key/value store with Redis.  
+Within the textbox and button code we should replace them with appropriate tag helpers.
