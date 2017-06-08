@@ -1,0 +1,55 @@
+use Mojolicious::Lite;
+
+# Make signed cookies tamper resistant
+app->secrets(['Keystone']);
+
+any '/' => sub {
+	##Variable Declaration##
+	my $c     = shift;
+	my $short = $c->param('go') || '';
+	my $site  = $c->param('link') || '';
+	my $new   = 0;
+	#Below is to get and store a single variable which will prevent overlapping link/key pairs
+	if ( $c->session('tick') eq '' ) { $c->session(tick => '0')};
+	my $number = $c->session('tick') + 1;
+	$c->session(tick => $number);
+	#Stashing certain variables for later
+	$c->stash(key   => $number);
+	$c->stash(news  => $new);
+	$c->stash(links => $site);
+  
+	##Flow Control##
+	if ($site eq '' && $short eq '') {$new = 0}
+	elsif ($site ne '') {
+		$c->session($number => $site);
+		$new = 1;
+	}
+	elsif ($short ne '') {
+		my $redi = $c->session($short);
+		$c->redirect_to("$redi");
+	}
+  
+} => 'index';
+
+app->start;
+
+
+__DATA__
+
+@@ index.html.ep
+% layout 'default';
+%= form_for index => begin
+  % if (param 'link') {
+    <b>Please use  </b>medgar.interns.kit.cm/?go=<%= $key%><b>  to access <%= $links %></b><br>
+  % }
+  Paste your link below, make sure to include the http://<br>
+  %= text_field 'link'
+  %= submit_button 'Shorten'
+% end
+
+@@ layouts/default.html.ep
+<!DOCTYPE html>
+<html>
+  <head><title>URL Shortner</title></head>
+  <body><%= content %></body>
+</html>
