@@ -30,10 +30,10 @@ get '/' => sub {
 #returns shortened URL
 get '/newsurl' => sub {
   my$c = shift;
-  my $bigg = $c ->param('big');
+  my $bigg = $c->param('big');
 fhlen();
 open($fh, ">>", $f);
-print "\n", $y, " ", $bigg;
+print $fh "\n", $y, " ", $bigg;
 close $fh;
 $c->render(template => 'short', burl => $y);
 };
@@ -45,19 +45,28 @@ get '/nshort' => sub{
 #after inputing small redirects to big
 get '/newburl' => sub {
   my $c = shift;
-  my $sma = $c->param('small')
+  my $sma = $c->param('small');
   my %urs;
   open($fh, "<", $f);
   while(!eof $fh) {
 	my $line = readline $fh;
 	if(defined $line){
-		my %words = split / /, $line;;
+		my %words = split / /, $line;
 		%urs = (%urs, %words);
 		}
 	}
 close $fh;
-  my $s = $urs{sma};
-  $c->render(template=> 'redir', hyper => $s);
+  my $s = $urs{$sma};
+  chomp $s;
+  foreach (sort keys %urs) {
+    print "$_ : $urs{$_}\n";
+  }
+  print $s;
+  if(defined $s){
+  print "defined bee bee";
+  }
+  $c->redirect_to("$s");
+
 };
 app->start;
 __DATA__
@@ -70,7 +79,7 @@ To unshorten URL click
 <%= link_to 'here' => '/nshort' %>.
 
 @@ redir.html.ep
-<html><%= link_to 'http://mojolicious.org' => begin %>Mojolicious<% end %>
+<html><%= link_to 'hyper' => begin %>Les Goooo!!!<% end %>
 <html>
 
 @@ short.html.ep
