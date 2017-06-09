@@ -7,7 +7,7 @@ my $y;			#empty variable used for something later/file length??
 my $fh;			#file handler, integrated variable
 
 ##Subroutines and Helpers##
-sub fhlen{
+sub fhlen{ #Sets Y as the length of the file
 	open($fh, "<", $f);
 	$y=0;
 	while(<$fh>)
@@ -16,7 +16,6 @@ sub fhlen{
 	}
 	close $fh;
 }
-
 
 #Main Page: uses index template
 get '/' => sub {
@@ -55,65 +54,45 @@ get '/newburl' => sub {
 		}
 	}
 	close $fh;
-	my $s = $urs{$sma}; # defines the long address
-  	chomp $s;           #remove any whitespace - for safety
-	#Debug Stuff
-  	foreach (sort keys %urs) {
-    		print "$_ : $urs{$_}\n";
-  	}	
-  	print $s;
- 	 if(defined $s){
- 		 print "defined bee bee";
-  	}
-	#The redirect
-	$c->redirect_to("$s");
+	my $s = $urs{$sma};   #Defines the long address
+  	chomp $s;             #Removes any whitespace - for safey
+	$c->redirect_to("$s");#The Redirect
 };
 
 app->start;
 
 ##DATA comments##
-#index.html.ep is the main page and redirects to either /nshort - uses the default template
+#index.html.ep is the main page and has two boxes, one for the URL, and one for the key. They each redirect to newsurl and newburl respectively.
 #redir.html.ep will redirect the user to their site
 #short.html.ep has the new key for the user and a link back to the main page
-#notshort.html.ep has a textbox which will take in a key and redirects to newburl with parameter 'small'
 __DATA__
 
 @@ index.html.ep 
 % layout 'default';
 % title 'Welcome';
-<h1>Enter Big URL</h1>
-To unshorten URL click
-<%= link_to 'here' => '/nshort' %>.
+<h1>Enter the URL you would like shortened below!</h1>
+%= form_for newsurl => begin
+%= text_field 'big'
+%= submit_button 
+%= end
+<h2> Or you can enter a shortened key below!</h2>
+%= form_for newburl => begin 
+%= text_field 'small'
+%= submit_button
+%= end
 
 @@ redir.html.ep
 <html><%= link_to 'hyper' => begin %>Les Goooo!!!<% end %>
 <html>
 
 @@ short.html.ep
-<html><%=$burl%>
-<h1>Click to go back and enter another one</h1>
-<%= link_to 'click' => '/'%>
-</html>
-
-@@ notshort.html.ep
-<html>
-<h1>Enter small URL to get big one</h2>
-<h2>click the link to shorten a big url</h2>
-<%=link_to 'click' => '/'%>
-%= form_for newburl => begin 
-%= text_field 'small'
-%= submit_button
-%= end
+<html>The special key for your website is <b><%=$burl%></b>
+To go back click <%= link_to 'here' => '/'%>
 </html>
 
 @@ layouts/default.html.ep
 <!DOCTYPE html>
 <html>
-  <head><title><%= title %></title></head>
-  <body><%= content %>
-  %= form_for newsurl => begin
-  %= text_field 'big'
-  %= submit_button 
-  %= end
-</body>
+	<head><title><%= title %></title></head>
+	<body><%= content %></body>
 </html>
