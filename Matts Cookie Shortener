@@ -1,0 +1,89 @@
+##GLOBAL DECLARATIONS##
+use Mojolicious::Lite;
+
+# Make signed cookies tamper resistant
+app->secrets(['Keystone']);
+
+
+##HELPERS##
+
+#Helper which returns the tick stored in the cookie
+helper cookietick => sub {
+	my $c = shift;
+	if ( $c->session('tick') eq '' ) {         #if tick doesn't exist it creates it
+		$c->session(tick => '0');
+		return "0";
+	}
+	else{
+		my $number = $c->session('tick') + 1; #otherwise tick gets incremented and returned
+		$c->session(tick => $number);
+		return "$number";
+	}
+};	
+
+#Helper which takes the url in the long parameter and stores it into the cookie while returning the key
+helper storesite => sub { 
+	my $c = shift;
+	my $tick = $c->cookietick;		#getting the key
+	my $lurl = $c->param('long');	#getting the url
+	$c->session($tick => $lurl);	#setting the pair into the cookie
+	return "$tick";					#returning the key for later use
+};
+
+#Helper which will return the url from the thing placeholder
+helper retrievesite => sub { 
+	my $c = shift;
+	my $thing = $c->param('thing');			#obtains the key
+	my $url = $c->session($thing);			#uses the key to get the url
+	if (index ($url, "http://") != -1 ) {	#makes sure that http://[website] gets returned
+		return "$url";
+	}
+	else {
+		return "http://$url";
+	}
+};
+
+
+##ROUTES##
+
+#Main page, does nothing
+get '/' => sub{
+	my $c = shift;
+	$c->render(template => 'index', address => '');
+};
+
+#Short URL Page, takes in the key and redirects to the proper site
+get '/0*thing' => {thing => ''} => sub {
+	my $c    = shift;
+	my $goal = $c->retrievesite;
+	$c->redirect_to("$goal");
+};
+
+#Long URL Page, takes in the url and pushes the key to the main page for the link
+get '/url' => sub {
+	my $c = shift;
+	my $key = $c->storesite;
+	$c->render(template => 'index', address => $key);
+};
+
+app->start;
+
+__DATA__
+
+@@ index.html.ep
+% layout 'default';
+%= form_for 'url' => begin
+	% if ($address ne '') {
+    	Please use  <b>medgar.interns.kit.cm/0<%= $address%></b>  to access your site.<br>
+	% }
+	Paste your link below:<br>
+	%= text_field 'long'
+	%= submit_button 'Shorten'
+% end
+
+@@ layouts/default.html.ep
+<!DOCTYPE html>
+<html>
+	<head><title>URL Shortner</title></head>
+	<body><%= content %></body>
+</html>
