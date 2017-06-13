@@ -2,7 +2,6 @@
 use Mojolicious::Lite;
 
 use Mojo::Pg;
-use Mojo::Date;
 use Time::Piece;
 use Time::Seconds;
 
