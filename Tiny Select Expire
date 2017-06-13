@@ -38,10 +38,19 @@ any '/' => sub {
     # Otherwise, store the new URL and generate a tiny code based on the shuffling of the URL
     #If the expiration checkbox was checked on - expiration date sent to database 1 week from current date in mdy format
     if($checkbox eq "on" && $expiration ne ""){
-      $tiny = $c->pg->db->query('insert into tiny (id, url, expires) values (left(md5(?), 6), ?, ?) returning *',
-      join('', shuffle(split //, $v->param('url'))),
-      $v->param('url'), $expiration,
-      )->hash;
+    	my $current = localtime;
+    	$current = $current->ymd;
+    	#Checking if their selected date is after the current date.
+    	if($expiration lt $current){
+    		$c->flash(message => "You tried to set an invalid expiration date (Prior to today). Try again.");
+    		$c->redirect_to('index');
+    	}
+    	else{
+	    	$tiny = $c->pg->db->query('insert into tiny (id, url, expires) values (left(md5(?), 6), ?, ?) returning *',
+		    join('', shuffle(split //, $v->param('url'))),
+		    $v->param('url'), $expiration,
+		    )->hash;	
+    	}
     }
     elsif($checkbox eq "on" && $expiration eq ""){
     	$c->flash(message => "No date selected for expiration. Try again.")->redirect_to('index');
@@ -64,7 +73,6 @@ get '/:id' => sub {
   my $c = shift;
   my $current = localtime->mdy;
   # Redirect to the URL on file for the code provided, 404 otherwise
-  #return $c->reply->not_found unless 
   my $tiny = $c->pg->db->query('select url from tiny where id = ? and (expires >= ? or expires is null)', $c->param('id'), $current)->hash;     
   if($tiny eq ""){
   	$c->flash(message => "We are sorry, this tiny URL has expired");
@@ -93,6 +101,12 @@ drop table tiny;
 
 % if ( my $message = flash 'message') {
   Message: <%= flash 'message' %><br>	
+% }
+% if ( my $expirationdate = flash 'expirationdate') {
+  ExpirationDate: <%= flash 'expirationdate' %><br>	
+% }
+% if ( my $current = flash 'current') {
+  Current: <%= flash 'current' %><br>	
 % }
 % if ( my $id = flash 'id' ) {
 Your Tiny URL is: <%= link_to url_for('tiny', {id => $id})->to_abs => begin %><%= url_for('tiny', {id => $id})->to_abs %><%= end %><br>
