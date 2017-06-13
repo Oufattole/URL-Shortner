@@ -43,7 +43,6 @@ any '/' => sub {
       join('', shuffle(split //, $v->param('url'))),
       $v->param('url'), $expiration,
       )->hash;
-      $c->flash(expiration => "$expiration");
     }
     else {
       $tiny = $c->pg->db->query('insert into tiny (id, url, expires) values (left(md5(?), 6), ?, NULL) returning *',
@@ -85,7 +84,13 @@ drop table tiny;
 
 % if ( my $id = flash 'id' ) {
 Your Tiny URL is: <%= link_to url_for('tiny', {id => $id})->to_abs => begin %><%= url_for('tiny', {id => $id})->to_abs %><%= end %><br>
-Which maps to: <%= flash 'url' %><br><br>
+Which maps to: <%= flash 'url' %><br>
+% if ( my $exp = flash 'expires') {
+  Expiration: <%= flash 'expires' %><br>	
+% }
+% else {
+  Expiration: No Expiration<br>
+% }
 % }
 %= form_for 'index', (method => 'POST') => begin
 %= label_for url => 'New Tiny URL (must be a valid URL)'
