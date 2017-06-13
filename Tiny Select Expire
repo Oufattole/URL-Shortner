@@ -97,16 +97,10 @@ drop table tiny;
 
 @@ index.html.ep
 % layout 'default';
-% title 'Welcome';
+% title 'Editted Tiny URL';
 
 % if ( my $message = flash 'message') {
   Message: <%= flash 'message' %><br>	
-% }
-% if ( my $expirationdate = flash 'expirationdate') {
-  ExpirationDate: <%= flash 'expirationdate' %><br>	
-% }
-% if ( my $current = flash 'current') {
-  Current: <%= flash 'current' %><br>	
 % }
 % if ( my $id = flash 'id' ) {
 Your Tiny URL is: <%= link_to url_for('tiny', {id => $id})->to_abs => begin %><%= url_for('tiny', {id => $id})->to_abs %><%= end %><br>
