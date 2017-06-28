@@ -1,0 +1,206 @@
+#!/usr/bin/env perl
+use Mojolicious::Lite;
+
+use Mojo::Pg;
+use Time::Piece;
+use Time::Seconds;
+
+use List::Util qw(shuffle);
+
+# tiny.conf
+# { pg => 'postgresql://a:b@c/d', };
+# Get a quick and free tiny hosted Postgresql database at
+#   http://elephantsql.com
+plugin 'Config';
+
+helper pg => sub { state $pg = Mojo::Pg->new(shift->config('pg')) };
+app->pg->migrations->from_data->migrate;
+
+any '/' => sub {
+    my $c = shift;
+  
+    #Expiration Date set with the expiration box
+    my $expiration = $c->param('expiration');
+  
+    # Here is the checkbox variable to set an expiration date for the 
+    my $checkbox = $c->param('expires'); # IF CHECK THE VALUE IS "ON"
+
+    # Check if parameters have been submitted
+    # and if not show the errors
+    my $v = $c->validation;
+    return $c->render unless $v->has_data;
+    $v->required('url')->like(qr/^https?:\/\//);
+    return $c->render if $v->has_error;
+  
+  
+    my $tiny;
+    # If someone already submitted the same URL, use the same tiny code
+    unless ( $tiny = $c->pg->db->query('select * from tiny where url = ?', $v->param('url'))->hash ) {
+    	# Otherwise, store the new URL and generate a tiny code based on the shuffling of the URL
+    
+    	#If the expiration checkbox was checked on
+	    if($checkbox eq "on"){
+	    	#Checking if the expiration date was actually selected
+	    	#Otherwise sends a validation error
+	    	my $regex = $c->getregex;
+	    	$v->required('expiration')->like(qr/$regex/);
+			return $c->render if $v->has_error;
+			$c->flash(message => "$regex");
+			
+			#If the expiration date was validated inserts into the database
+		    $tiny = $c->pg->db->query('insert into tiny (id, url, expires) values (left(md5(?), 6), ?, ?) returning *',
+		    join('', shuffle(split //, $v->param('url'))),
+		    $v->param('url'), $expiration,
+		    )->hash;	
+	    }
+	    #If the expiration checkbox was checked off - expiration date sent to database as NULL
+	    else{
+	        $tiny = $c->pg->db->query('insert into tiny (id, url, expires) values (left(md5(?), 6), ?, NULL) returning *',
+	        join('', shuffle(split //, $v->param('url'))),
+	        $v->param('url'),
+	        )->hash;
+	    }
+    
+    }
+    app->log->info(sprintf("Add: %s => %s", $tiny->{id}, $tiny->{url}));
+    # Show the same index page, but show the tiny code just created
+    $c->flash($tiny)->redirect_to('index');
+} => 'index';
+
+helper 'getregex' => sub{
+  	my $c = shift;
+	my $today = localtime->ymd;
+	
+	##############################
+	###  YEAR REGEX VARIABLES  ###
+	##############################
+	my $year = substr $today, 0, 4;
+	my $yearones = $year % 10;
+	my $yearthree = substr $year, 0, 3;
+	my $yeartens = $yearthree % 10;
+	my $yeartwo = substr $year, 0, 2;
+	my $yearhundreds = $yeartwo % 10;
+	my $yearone = substr $year, 0, 1;
+	my $yearthousands = $yearone % 10;
+	
+	$yearones += 1;
+	$yeartens += 1;
+	$yearhundreds += 1;
+	$yearthousands += 1;
+	
+	my $yearregex = "$yearthree\[$yearones-9]|$yeartwo\[$yeartens-9][0-9]|$yearone\[$yearhundreds-9][0-9][0-9]|[$yearthousands-9][0-9][0-9][0-9]";
+
+	###############################
+	###  MONTH REGEX VARIABLES  ###
+	###############################
+	my $month = substr $today, 5, 2;
+	my $monthtens = substr $month, 0, 1;
+	my $monthones = $month % 10;
+	my $monthregex = shift;
+	
+	$monthones += 1;
+	
+	if ($monthtens == 0){
+		$monthregex = "$monthtens\[$monthones-9]|1[0-2]";
+	}
+	else{
+		$monthregex = "$monthtens\[$monthones-2]";
+	}
+	
+	#############################
+	###  DAY REGEX VARIABLES  ###
+	#############################
+	my $day = substr $today, 8, 2;
+	my $daytens = substr $day, 0, 1;
+	my $dayones = $day % 10;
+	my $dayregex = shift;
+	
+	if ($daytens == 0){
+		$dayregex = "$daytens\[$dayones-9]|[12][0-9]|3[0-1]";
+	}
+	elsif ($daytens == 1){
+		$dayregex = "$daytens\[$dayones-9]|2[0-9]|3[0-1]";
+	}
+	elsif ($daytens == 2){
+		$dayregex = "$daytens\[$dayones-9]|3[0-1]";
+	}
+	else{
+		$dayregex = "$daytens\[$dayones-1]";
+	}
+	
+	my $afteryearregex = "(($yearregex)-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[0-1]))";
+	my $sameyearsamemonthregex = "($year-$month-($dayregex))";
+	my $sameyearaftermonthregex = "($year-($monthregex)-(0[1-9]|[12][0-9]|3[0-1]))";
+	my $totalregex = "$afteryearregex|$sameyearsamemonthregex|$sameyearaftermonthregex";
+	
+	return $totalregex;
+};
+
+get '/:id' => sub {
+    my $c = shift;
+    my $today = localtime->mdy;
+    # Redirect to the URL on file for the code provided, 404 otherwise
+    my $tiny = $c->pg->db->query('select url from tiny where id = ? and (expires >= ? or expires is null)', $c->param('id'), $today)->hash;     
+    # If no URL suites 
+    if($tiny eq ""){
+  		$c->flash(message => "We are sorry, this tiny URL has expired or doesn't exist.");
+  		$c->redirect_to('index');
+    }
+    else{
+  		app->log->info(sprintf("Redirect: %s => %s", $c->param('id'), $tiny->{url}));
+		return $c->reply->not_found unless $tiny->{url};
+		$c->redirect_to($tiny->{url});
+    }
+} => 'tiny';
+
+app->start or exit unless app->mode =~ /^test/;
+
+__DATA__
+@@ migrations
+-- 1 up
+create table tiny (id text, url text, expires date);
+create unique index on tiny (id);
+-- 1 down
+drop table tiny;
+
+@@ index.html.ep
+% layout 'default';
+% title 'Editted Tiny URL';
+
+% if ( my $message = flash 'message') {
+  Message: <%= flash 'message' %><br>	
+% }
+% if ( my $id = flash 'id' ) {
+  Your Tiny URL is: <%= link_to url_for('tiny', {id => $id})->to_abs => begin %><%= url_for('tiny', {id => $id})->to_abs %><%= end %><br>
+  Which maps to: <%= flash 'url' %><br>
+% if ( my $exp = flash 'expires') {
+  Expiration: <%= flash 'expires' %><br>	
+% }
+% else {
+  Expiration: No Expiration<br>
+% }
+% }
+%= form_for 'index', (method => 'POST') => begin
+%= label_for url => 'New Tiny URL (must be a valid URL)'
+<br>
+%= text_field 'url', placeholder => 'Enter your URL here'
+%= label_for expires => 'Expire?'
+%= check_box 'expires'
+%= label_for expiration => 'Day?'
+%= input_tag 'expiration', type => "date", name => "expiration"
+<br>
+%= submit_button
+%= end
+
+@@ layouts/default.html.ep
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= title %></title>
+    <style>
+      label.field-with-error { color: #dd7e5e }
+      input.field-with-error { background-color: #fd9e7e }
+    </style>
+  </head>
+  <body><%= content %></body>
+</html>
